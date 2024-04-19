@@ -432,12 +432,22 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         # till here the text should have been filled correctly 
 
         # 5. Fill the embeddings corresponding to the images. Anything that is still zeros needs filling
-        image_to_overwrite = torch.all(final_embedding == 0, dim=-1)
+        final_embedding_mask = torch.zeros_like(final_embedding, device=target_device)
+        final_embedding_mask[batch_indices, text_to_overwrite] = 1
+        image_to_overwrite = torch.all(final_embedding_mask == 0, dim=-1)
         image_to_overwrite &= image_to_overwrite.cumsum(-1) - 1 >= nb_image_pad[:, None].to(target_device)
 
         # Compute the sum of lengths of image_features
         total_len_img_ftrs = sum([img.shape[0] for img in image_features])
         if image_to_overwrite.sum() != total_len_img_ftrs:
+            print("inputs_embeds", inputs_embeds.shape)
+            print("max_embed_dim", max_embed_dim)
+            print("image_to_overwrite.sum()", image_to_overwrite.sum())
+            print("total_len_img_ftrs", total_len_img_ftrs)
+            print("image_features")
+            for x in image_features:
+                print(x.shape)
+            print("nb_image_pad", nb_image_pad)
             raise ValueError(
                 f"The input provided to the model are wrong. The number of image tokens is {torch.sum(special_image_token_mask)} while"
                 f" the number of image given to the model is {num_images}. This prevents correct indexing and breaks batch generation."
