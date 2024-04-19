@@ -438,6 +438,12 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         # Compute the sum of lengths of image_features
         total_len_img_ftrs = sum([img.shape[0] for img in image_features])
         if image_to_overwrite.sum() != total_len_img_ftrs:
+            print("image_to_overwrite.sum()", image_to_overwrite.sum())
+            print("total_len_img_ftrs", total_len_img_ftrs)
+            print("image_features")
+            for x in image_features:
+                print(x.shape)
+            print("nb_image_pad", nb_image_pad)
             raise ValueError(
                 f"The input provided to the model are wrong. The number of image tokens is {torch.sum(special_image_token_mask)} while"
                 f" the number of image given to the model is {num_images}. This prevents correct indexing and breaks batch generation."
