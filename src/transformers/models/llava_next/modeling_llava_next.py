@@ -391,9 +391,10 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         # `special_image_token_mask` identifies image tokens. Each image token will be replaced by `nb_text_tokens_per_images - 1` text tokens.
         # `torch.cumsum` computes how each image token shifts subsequent text token positions.
         # - 1 to adjust for zero-based indexing, as `cumsum` inherently increases indices by one.
-        patches_lengths = torch.tensor(patches_lengths, device=inputs_embeds.device).unsqueeze(dim=1)
-        repeated_patches = patches_lengths.repeat(1, special_image_token_mask.shape[1]) 
-        new_token_positions = torch.cumsum(special_image_token_mask * (repeated_patches - 1) + 1, -1) - 1
+        patches_lengths = torch.tensor(patches_lengths, device=inputs_embeds.device)
+        new_token_positions = torch.ones_like(input_ids)
+        new_token_positions[input_ids==self.config.image_token_index] = patches_lengths
+        new_token_positions = torch.cumsum(new_token_positions, -1) - 1
         nb_image_pad = max_embed_dim - 1 - new_token_positions[:, -1]
         if left_padding:
             new_token_positions += nb_image_pad[:, None]  # offset for left padding
@@ -440,8 +441,9 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         # Compute the sum of lengths of image_features
         total_len_img_ftrs = sum([img.shape[0] for img in image_features])
         if image_to_overwrite.sum() != total_len_img_ftrs:
-            print("inputs_embeds", inputs_embeds.shape)
-            print("max_embed_dim", max_embed_dim)
+            print(f"{patches_lengths=}")
+            print(f"{inputs_embeds.shape=}")
+            print(f"{max_embed_dim=}")
             print("image_to_overwrite.sum()", image_to_overwrite.sum())
             print("total_len_img_ftrs", total_len_img_ftrs)
             print("image_features")
@@ -521,7 +523,6 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         >>> processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "[INST]  \nWhat is shown in this image? [/INST] The image appears to be a radar chart, which is a type of multi-dimensional plot (...)"
         ```"""
-
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -627,7 +628,6 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
                         image_feature = image_feature[0]
                         image_feature = torch.cat((image_feature, self.image_newline[None]), dim=0)
                     new_image_features.append(image_feature)
-                # image_features = torch.stack(new_image_features, dim=0)
 
                 inputs_embeds, attention_mask, labels, position_ids = self._merge_input_ids_with_image_features(
                     new_image_features, inputs_embeds, input_ids, attention_mask, labels
