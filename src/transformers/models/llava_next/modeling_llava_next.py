@@ -314,8 +314,7 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         self.language_model = AutoModelForCausalLM.from_config(
             config.text_config, attn_implementation=config._attn_implementation
         )
-        self.pad_token_id = 32001
-        # self.config.pad_token_id if self.config.pad_token_id is not None else -1
+        self.pad_token_id = self.config.pad_token_id if self.config.pad_token_id is not None else -1
         self.post_init()
 
     # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.get_input_embeddings
@@ -546,6 +545,9 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         >>> processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "[INST]  \nWhat is shown in this image? [/INST] The image appears to be a radar chart, which is a type of multi-dimensional plot (...)"
         ```"""
+
+        print('input ids', input_ids)
+        print('image sizes', image_sizes)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
